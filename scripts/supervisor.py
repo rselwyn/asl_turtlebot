@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
 
 from enum import Enum
+from os import POSIX_FADV_DONTNEED
 
 import rospy
 from asl_turtlebot.msg import DetectedObject
 from gazebo_msgs.msg import ModelStates
-from geometry_msgs.msg import Twist, PoseArray, Pose2D, PoseStamped
+from geometry_msgs.msg import Twist, PoseArray, Pose2D, PoseStamped, Pose, Point
 from std_msgs.msg import Float32MultiArray, String
 import tf
+from tf.transformations import quaternion_from_euler
+
+from std_msgs.msg import Header
 
 class Mode(Enum):
     """State machine modes. Feel free to change."""
@@ -53,6 +57,22 @@ class SupervisorParams:
             print("    pos_eps, theta_eps = {}, {}".format(self.pos_eps, self.theta_eps))
             print("    stop_time, stop_min_dist, crossing_time = {}, {}, {}".format(self.stop_time, self.stop_min_dist, self.crossing_time))
 
+def pose2d_to_pose(pose: Pose2D):
+    return Pose(Point(pose.x,pose.y,0),quaternion_from_euler(0,0,pose.theta))
+
+def pose_to_pose2d(pose: Pose):
+    quaternion = (pose.orientation.x,
+                  pose.orientation.y,
+                  pose.orientation.z,
+                  pose.orientation.w)
+    return Pose2D(pose.position.x, pose.position.y, tf.transformations.euler_from_quaternion(quaternion)[2])
+
+
+# local frame
+EXPLORATION_POSES = [
+    Pose2D(x=0,y=0,theta=0),
+    Pose2D(x=0,y=0,theta=1)
+]
 
 class Supervisor:
 
@@ -74,6 +94,8 @@ class Supervisor:
         # Current mode
         self.mode = Mode.IDLE
         self.prev_mode = None  # For printing purposes
+
+        self.pose_index = 0
 
         ########## PUBLISHERS ##########
 
@@ -119,21 +141,22 @@ class Supervisor:
 
     def rviz_goal_callback(self, msg):
         """ callback for a pose goal sent through rviz """
-        origin_frame = "/map" if self.params.mapping else "/odom"
-        print("Rviz command received!")
 
-        try:
-            nav_pose_origin = self.trans_listener.transformPose(origin_frame, msg)
-            self.x_g = nav_pose_origin.pose.position.x
-            self.y_g = nav_pose_origin.pose.position.y
-            quaternion = (nav_pose_origin.pose.orientation.x,
-                          nav_pose_origin.pose.orientation.y,
-                          nav_pose_origin.pose.orientation.z,
-                          nav_pose_origin.pose.orientation.w)
-            euler = tf.transformations.euler_from_quaternion(quaternion)
-            self.theta_g = euler[2]
-        except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
-            pass
+        # origin_frame = "/map" if self.params.mapping else "/odom"
+        # print("Rviz command received!")
+
+        # try:
+        #     nav_pose_origin = self.trans_listener.transformPose(origin_frame, msg)
+        #     self.x_g = nav_pose_origin.pose.position.x
+        #     self.y_g = nav_pose_origin.pose.position.y
+        #     quaternion = (nav_pose_origin.pose.orientation.x,
+        #                   nav_pose_origin.pose.orientation.y,
+        #                   nav_pose_origin.pose.orientation.z,
+        #                   nav_pose_origin.pose.orientation.w)
+        #     euler = tf.transformations.euler_from_quaternion(quaternion)
+        #     self.theta_g = euler[2]
+        # except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+        #     pass
 
         self.mode = Mode.NAV
 
@@ -180,6 +203,16 @@ class Supervisor:
         nav_g_msg.theta = self.theta_g
 
         self.pose_goal_publisher.publish(nav_g_msg)
+
+    def set_goal_pose(self, pose: Pose2D, source_frame="/odom"):
+
+        pose = pose2d_to_pose(pose)
+        pose = self.trans_listener.transformPose("/map" if self.params.mapping else "/odom", PoseStamped(Header(frame_id=source_frame), pose))
+        pose = pose_to_pose2d(pose.pose)
+
+        self.x_g = pose.x
+        self.y_g = pose.y
+        self.theta_g = pose.theta
 
     def stay_idle(self):
         """ sends zero velocity to stay put """
@@ -267,7 +300,12 @@ class Supervisor:
 
         elif self.mode == Mode.NAV:
             if self.close_to(self.x_g, self.y_g, self.theta_g):
-                self.mode = Mode.IDLE
+                if self.pose_index < len(EXPLORATION_POSES)-1:
+                    self.pose_index += 1
+                    self.set_goal_pose(EXPLORATION_POSES[self.pose_index])
+                    self.nav_to_pose()
+                else:
+                    self.mode = Mode.IDLE
             else:
                 self.nav_to_pose()
 
