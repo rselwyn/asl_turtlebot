@@ -24,6 +24,7 @@ class Mode(Enum):
     ALIGN = 1
     TRACK = 2
     PARK = 3
+    DISABLED = 4
 
 
 class Navigator:
@@ -34,7 +35,7 @@ class Navigator:
 
     def __init__(self):
         rospy.init_node("turtlebot_navigator", anonymous=True)
-        self.mode = Mode.IDLE
+        self.mode = Mode.DISABLED
 
         # current state
         self.x = 0.0
@@ -120,8 +121,16 @@ class Navigator:
         rospy.Subscriber("/map", OccupancyGrid, self.map_callback)
         rospy.Subscriber("/map_metadata", MapMetaData, self.map_md_callback)
         rospy.Subscriber("/cmd_nav", Pose2D, self.cmd_nav_callback)
+        rospy.Subscriber("/supervisor", String, self.supervisor_callback)
 
         print("finished init")
+
+    def supervisor_callback(self, string):
+
+        if string == "disable navigator":
+            self.mode = Mode.DISABLED
+        elif string == "enable navigator":
+            self.replan()
 
     def dyn_cfg_callback(self, config, level):
         rospy.loginfo(
@@ -144,7 +153,7 @@ class Navigator:
             self.x_g = data.x
             self.y_g = data.y
             self.theta_g = data.theta
-            self.replan()
+            if self.mode != Mode.DISABLED: self.replan()
 
     def map_md_callback(self, msg):
         """
@@ -392,6 +401,9 @@ class Navigator:
     def run(self):
         rate = rospy.Rate(10)  # 10 Hz
         while not rospy.is_shutdown():
+
+            rate.sleep()
+
             # try to get state information to update self.x, self.y, self.theta
             try:
                 (translation, rotation) = self.trans_listener.lookupTransform(
@@ -408,9 +420,12 @@ class Navigator:
             ) as e:
                 self.current_plan = []
                 rospy.loginfo("Navigator: waiting for state info")
-                self.switch_mode(Mode.IDLE)
+                if self.mode != Mode.DISABLED: self.switch_mode(Mode.IDLE)
                 print(e)
                 pass
+
+            if self.mode == Mode.DISABLED:
+                continue # don't do anything else if we're not enabled
 
             # STATE MACHINE LOGIC
             # some transitions handled by callbacks
@@ -440,7 +455,6 @@ class Navigator:
                     self.switch_mode(Mode.IDLE)
 
             self.publish_control()
-            rate.sleep()
 
 
 if __name__ == "__main__":
