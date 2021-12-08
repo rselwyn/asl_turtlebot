@@ -30,11 +30,7 @@ class SupervisorParams:
         # /gazebo/model_states. Otherwise, we will use a TF lookup.
         self.use_gazebo = False#rospy.get_param("sim")
 
-        # How is nav_cmd being decided -- human manually setting it, or rviz
-        self.rviz = rospy.get_param("rviz")
-
         # If using gmapping, we will have a map frame. Otherwise, it will be odom frame.
-        self.mapping = rospy.get_param("map")
 
         # Threshold at which we consider the robot at a location
         self.pos_eps = rospy.get_param("~pos_eps", 0.02)
@@ -51,9 +47,10 @@ class SupervisorParams:
             print("SupervisorParams:")
             print("    use_gazebo = {}".format(self.use_gazebo))
             print("    rviz = {}".format(self.rviz))
-            print("    mapping = {}".format(self.mapping))
             print("    pos_eps, theta_eps = {}, {}".format(self.pos_eps, self.theta_eps))
             print("    stop_time, stop_min_dist = {}, {}".format(self.stop_time, self.stop_min_dist))
+
+        
 
 def pose2d_to_pose(pose: Pose2D):
 
@@ -118,53 +115,17 @@ class Supervisor:
         # Stop sign detector
         rospy.Subscriber('/detector/stop_sign', DetectedObject, self.stop_sign_detected_callback)
 
-        # If using gazebo, we have access to perfect state
-        if self.params.use_gazebo:
-            rospy.Subscriber('/gazebo/model_states', ModelStates, self.gazebo_callback)
         self.trans_listener = tf.TransformListener()
-
-        # If using rviz, we can subscribe to nav goal click
-        # if self.params.rviz:
-        #     rospy.Subscriber('/move_base_simple/goal', PoseStamped, self.rviz_goal_callback)
-        # else:
-        #     self.x_g, self.y_g, self.theta_g = 1.5, -4., 0.
-        #     self.set_mode(Mode.EXPLORE)
         
+    @property
+    def localizer(self):
+        return rospy.get_param("localizer")
+
+    @localizer.setter
+    def localizer(self):
+        rospy.set_param("localizer")
 
     ########## SUBSCRIBER CALLBACKS ##########
-
-    def gazebo_callback(self, msg):
-        if "turtlebot3_burger" not in msg.name:
-            return
-
-        pose = msg.pose[msg.name.index("turtlebot3_burger")]
-        self.x = pose.position.x
-        self.y = pose.position.y
-        quaternion = (pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w)
-        euler = tf.transformations.euler_from_quaternion(quaternion)
-        self.theta = euler[2]
-
-    def rviz_goal_callback(self, msg):
-        """ callback for a pose goal sent through rviz """
-
-        # origin_frame = "/map" if self.params.mapping else "/odom"
-        # print("Rviz command received!")
-
-        # try:
-        #     nav_pose_origin = self.trans_listener.transformPose(origin_frame, msg)
-        #     self.x_g = nav_pose_origin.pose.position.x
-        #     self.y_g = nav_pose_origin.pose.position.y
-        #     quaternion = (nav_pose_origin.pose.orientation.x,
-        #                   nav_pose_origin.pose.orientation.y,
-        #                   nav_pose_origin.pose.orientation.z,
-        #                   nav_pose_origin.pose.orientation.w)
-        #     euler = tf.transformations.euler_from_quaternion(quaternion)
-        #     self.theta_g = euler[2]
-        # except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
-        #     pass
-
-        # Begin moving through hardcoded waypoints once we command any pose through rviz
-        self.set_mode(Mode.EXPLORE)
 
     def stop_sign_detected_callback(self, msg):
         """ callback for when the detector has found a stop sign. Note that

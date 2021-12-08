@@ -79,8 +79,8 @@ class Navigator:
 
         # threshold at which navigator switches from trajectory to pose control
         self.near_thresh = 0.2
-        self.at_thresh = 0.02
-        self.at_thresh_theta = 0.05
+        self.at_thresh = POS_EPS
+        self.at_thresh_theta = THETA_EPS
 
         # trajectory smoothing
         self.spline_alpha = 0.15
