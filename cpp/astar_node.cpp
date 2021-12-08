@@ -2,10 +2,10 @@
 **  Astar ROS
 **/
 #include <ros/ros.h>
-#include <AStar.h>
+#include <asl_turtlebot/AStar.h>
 #include <math.h>       /* round, floor, ceil, trunc */
-#include "AStarOutput.h"
-#include "StateOccupancyGrid.h"
+#include "asl_turtlebot/AStarOutput.h"
+#include "asl_turtlebot/StochOccupancyGrid.h"
 
 #include <set>
 #include <map>

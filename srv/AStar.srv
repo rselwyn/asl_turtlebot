@@ -6,4 +6,4 @@ StochOccupancyGrid grid
 uint32 plan_resolution
 ---
 AStarOutput output_path
-boolean status
+bool status

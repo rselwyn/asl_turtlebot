@@ -8,6 +8,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   std_msgs
+  nav_msgs
   message_generation
 	dynamic_reconfigure
 )
@@ -136,6 +137,8 @@ include_directories(
 
 add_executable(astar_node cpp/astar_node.cpp)
 target_link_libraries(astar_node ${catkin_LIBRARIES})
+add_dependencies(astar_node ${${PROJECT_NAME}_EXPORTED_TARGETS})
+
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
