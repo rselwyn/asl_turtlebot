@@ -116,12 +116,12 @@ bool astar_path_plan(asl_turtlebot::AStar::Request &req, asl_turtlebot::AStar::R
 		std::pair<int, int> x_current;
 		int min = 100000;
 		for (auto point : algo_params.est_cost_through) {
-			if (algo_params.open_set.count(point) != 1) {
+			if (point.second != 1) {
 				continue;
 			}
-			if (algo_params.est_cost_through[point] < min) {
-				x_current = point;
-				min = algo_params.est_cost_through[point];
+			if (point.second < min) {
+				x_current = point.first;
+				min = point.second;
 			}	
 
 		}
@@ -137,7 +137,7 @@ bool astar_path_plan(asl_turtlebot::AStar::Request &req, asl_turtlebot::AStar::R
 		algo_params.open_set.erase(x_current);
 		algo_params.closed_set.insert(x_current);
 
-		for (auto neighbor : get_neighbors(x_current)) {
+		for (auto neighbor : get_neighbors(req, x_current)) {
 			if (algo_params.closed_set.count(neighbor) == 1) continue;
 
 			double tentative_cost_to_arrive = algo_params.cost_to_arrive[x_current] + distance(x_current, neighbor);
@@ -148,7 +148,7 @@ bool astar_path_plan(asl_turtlebot::AStar::Request &req, asl_turtlebot::AStar::R
 
 			algo_params.came_from[neighbor] = x_current;
 			algo_params.cost_to_arrive[neighbor] = tentative_cost_to_arrive;
-			algo_params.est_cost_through[neighbor] = tenattive_cost_to_arrive + distance(neighbor, x_goal);
+			algo_params.est_cost_through[neighbor] = tentative_cost_to_arrive + distance(neighbor, x_goal);
 		}
 	}
 	res.status = false;
