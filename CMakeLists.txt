@@ -50,14 +50,15 @@ add_message_files(
  FILES
  DetectedObject.msg
  DetectedObjectList.msg
+ AStarOutput.msg
+ StochOccupancyGrid.msg
 )
 
 ## Generate services in the 'srv' folder
-# add_service_files(
-#   FILES
-#   Service1.srv
-#   Service2.srv
-# )
+add_service_files(
+ FILES
+ AStar.srv
+)
 
 ## Generate actions in the 'action' folder
 # add_action_files(
@@ -70,6 +71,7 @@ add_message_files(
 generate_messages(
  DEPENDENCIES
  std_msgs
+ nav_msgs
 )
 
 ################################################
@@ -131,6 +133,9 @@ include_directories(
 
 ## Declare a C++ executable
 # add_executable(asl_turtlebot_node src/asl_turtlebot_node.cpp)
+
+add_executable(astar_node cpp/astar_node.cpp)
+target_link_libraries(astar_node ${catkin_LIBRARIES})
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
