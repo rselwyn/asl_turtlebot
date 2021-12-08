@@ -94,15 +94,16 @@ class Navigator:
         self.kdy = 1.5
 
         # heading controller parameters
-        self.kp_th = 2.0
+        self.kp_th = 1.4
+        self.kd_th = 7
 
         self.traj_controller = TrajectoryTracker(
             self.kpx, self.kpy, self.kdx, self.kdy, self.v_max, self.om_max
         )
         self.pose_controller = PoseController(
-            0.0, 0.0, 0.0, self.v_max, self.om_max
+            nav_params.k1, nav_params.k2, nav_params.k3, self.v_max, self.om_max
         )
-        self.heading_controller = HeadingController(self.kp_th, self.om_max)
+        self.heading_controller = HeadingController(self.kp_th, self.kd_th, self.om_max)
 
         self.nav_planned_path_pub = rospy.Publisher(
             "/planned_path", Path, queue_size=10
@@ -132,15 +133,6 @@ class Navigator:
             self.switch_mode(Mode.DISABLED)
         elif string == "enable navigator":
             self.replan()
-
-    def dyn_cfg_callback(self, config, level):
-        rospy.loginfo(
-            "Reconfigure Request: k1:{k1}, k2:{k2}, k3:{k3}".format(**config)
-        )
-        self.pose_controller.k1 = config["k1"]
-        self.pose_controller.k2 = config["k2"]
-        self.pose_controller.k3 = config["k3"]
-        return config
 
     def cmd_nav_callback(self, data):
         """
@@ -277,13 +269,15 @@ class Navigator:
         are all properly set up / with the correct goals loaded
         """
         
-        rospy.loginfo(f"x_map {self.x}")
-        rospy.loginfo(f"y_map {self.y}")
-        rospy.loginfo(f"theta_map {self.theta}")
+        # rospy.loginfo(f"x_map {self.x}")
+        # rospy.loginfo(f"y_map {self.y}")
+        # rospy.loginfo(f"theta_map {self.theta}")
 
-        rospy.loginfo(f"x_goal {self.x_g}")
-        rospy.loginfo(f"y_goal {self.y_g}")
-        rospy.loginfo(f"theta_goal {self.theta_g}")
+        # rospy.loginfo(f"x_goal {self.x_g}")
+        # rospy.loginfo(f"y_goal {self.y_g}")
+        # rospy.loginfo(f"theta_goal {self.theta_g}")
+
+        # rospy.loginfo(f"localizer [navigator]: {nav_params.localizer}")
 
         t = self.get_current_plan_time()
 
@@ -339,6 +333,10 @@ class Navigator:
         rospy.loginfo(f"x_init: {x_init}")
         x_goal = self.snap_to_grid((self.x_g, self.y_g))
         rospy.loginfo(f"x_goal: {x_goal}")
+
+        if nav_params.localizer == "odom":
+            self.occupancy.probs = np.zeros_like(self.occupancy.probs)
+        
         problem = AStar(
             state_min,
             state_max,

@@ -11,6 +11,7 @@
     <arg name="sim" default="$(arg sim)"/>
   </include>
 
+  <node pkg="asl_turtlebot" type="nav_params.py" name="nav_params" output="screen" />
   <node pkg="asl_turtlebot" type="navigator.py" name="navigator" output="screen" />
   <!-- <node pkg="asl_turtlebot" type="supervisor.py" name="supervisor" output="screen" /> -->
 </launch>

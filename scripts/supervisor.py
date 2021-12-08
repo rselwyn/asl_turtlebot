@@ -39,10 +39,24 @@ def pose_to_pose2d(pose: Pose):
 
 # All points in world frame
 EXPLORATION_WAYPOINTS = [
-    (3.512, 1.847, np.pi/2),
-    (3.4, 2.7, np.pi/2),
-    (2.5, 2.7, np.pi),
-    (2.5, 1.5, -np.pi/2),
+    (3.512, 1.847, np.pi/2), # center right
+    (3.4, 2.72, np.pi/2), # top right
+    (2.39, 2.72, np.pi), # top middle
+    (2.39, 1.85, -np.pi/2),
+    (2.25, 1.5, -np.pi/2),
+    (2.25, 0.3, -np.pi/2), # bottom middle
+    (0.36, 0.37, np.pi), # bottom left
+    (0.31, 1.54, np.pi/2), # center left
+    (2.26, 1.54, 0), # center
+    (2.39, 2.87, np.pi/2), # top middle
+    (1.45, 2.87, np.pi),
+    (0.65, 2.64, -2.94),
+    (0.31, 2.28, -np.pi/2),
+    (0.31, 1.54, -np.pi/2), # center left
+    (2.26, 1.54, 0), # center
+    (2.25, 0.3, -np.pi/2), # bottom middle
+    (3.4, 0.3, 0), # bottom right
+    (3.4, 1.8, np.pi/2) # center right
 ]
 
 EXPLORATION_WAYPOINTS = [Pose2D(*x) for x in EXPLORATION_WAYPOINTS]
