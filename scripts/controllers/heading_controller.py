@@ -11,21 +11,28 @@ class HeadingController:
     """
     pose stabilization controller
     """
-    def __init__(self, kp, om_max=1):
+    def __init__(self, kp, kd, om_max=1):
         self.kp = kp
+        self.kd = kd
         self.om_max = om_max
+        self.last_err = None
 
     def load_goal(self, th_g):
         """
         loads in a new goal position
         """
         self.th_g = th_g
+        self.last_err = None
 
     def compute_control(self, x, y, th, t):
+
         # rospy.loginfo(f"theta: {th}")
         # rospy.loginfo(f"theta_g: {self.th_g}")
+
         err = wrapToPi(self.th_g - th)
-        om = self.kp*err
+        om = self.kp*err - (self.kd*(self.last_err-err) if self.last_err is not None else 0)
+        self.last_err = err
+
         # rospy.loginfo(f"om: {om}")
 
         # apply control limits

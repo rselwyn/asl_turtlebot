@@ -17,6 +17,7 @@ from enum import Enum
 
 from dynamic_reconfigure.server import Server
 from asl_turtlebot.cfg import NavigatorConfig
+from nav_consts import POS_EPS, THETA_EPS
 
 # state machine modes, not all implemented
 class Mode(Enum):
@@ -124,6 +125,15 @@ class Navigator:
         rospy.Subscriber("/supervisor", String, self.supervisor_callback)
 
         print("finished init")
+
+    # localizer is either "odom" or "map"
+    @property
+    def localizer(self):
+        return rospy.get_param("localizer")
+
+    @localizer.setter
+    def localizer(self):
+        rospy.set_param("localizer")
 
     def supervisor_callback(self, string):
 
@@ -247,26 +257,26 @@ class Navigator:
     def publish_planned_path(self, path, publisher):
         # publish planned plan for visualization
         path_msg = Path()
-        path_msg.header.frame_id = "map"
+        path_msg.header.frame_id = self.localizer
         for state in path:
             pose_st = PoseStamped()
             pose_st.pose.position.x = state[0]
             pose_st.pose.position.y = state[1]
             pose_st.pose.orientation.w = 1
-            pose_st.header.frame_id = "map"
+            pose_st.header.frame_id = path_msg.header.frame_id
             path_msg.poses.append(pose_st)
         publisher.publish(path_msg)
 
     def publish_smoothed_path(self, traj, publisher):
         # publish planned plan for visualization
         path_msg = Path()
-        path_msg.header.frame_id = "map"
+        path_msg.header.frame_id = self.localizer
         for i in range(traj.shape[0]):
             pose_st = PoseStamped()
             pose_st.pose.position.x = traj[i, 0]
             pose_st.pose.position.y = traj[i, 1]
             pose_st.pose.orientation.w = 1
-            pose_st.header.frame_id = "map"
+            pose_st.header.frame_id = path_msg.header.frame_id
             path_msg.poses.append(pose_st)
         publisher.publish(path_msg)
 
@@ -419,7 +429,7 @@ class Navigator:
             # try to get state information to update self.x, self.y, self.theta
             try:
                 (translation, rotation) = self.trans_listener.lookupTransform(
-                    "/map", "/base_footprint", rospy.Time(0)
+                    self.localizer, "/base_footprint", rospy.Time(0)
                 )
                 self.x = translation[0]
                 self.y = translation[1]

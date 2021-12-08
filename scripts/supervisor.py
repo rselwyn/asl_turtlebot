@@ -11,6 +11,7 @@ import tf
 from tf.transformations import quaternion_from_euler
 import numpy as np
 from utils.utils import wrapToPi
+from nav_consts import POS_EPS, THETA_EPS
 
 from std_msgs.msg import Header
 
@@ -26,53 +27,58 @@ class Mode(Enum):
 class SupervisorParams:
 
     def __init__(self, verbose=False):
-        # If sim is True (i.e. using gazebo), we want to subscribe to
-        # /gazebo/model_states. Otherwise, we will use a TF lookup.
-        self.use_gazebo = False#rospy.get_param("sim")
-
-        # If using gmapping, we will have a map frame. Otherwise, it will be odom frame.
 
         # Threshold at which we consider the robot at a location
-        self.pos_eps = rospy.get_param("~pos_eps", 0.02)
-        self.theta_eps = rospy.get_param("~theta_eps", 0.05)
+        self.pos_eps = POS_EPS
+        self.theta_eps = THETA_EPS
 
         # Time to stop at a stop sign
-        self.stop_time = rospy.get_param("~stop_time", 3.)
+        self.stop_time = 3
         self.stop_sign_start = None
 
         # Minimum distance from a stop sign to obey it
-        self.stop_min_dist = rospy.get_param("~stop_min_dist", 0.5)
+        self.stop_min_dist = 0.5
 
         if verbose:
             print("SupervisorParams:")
-            print("    use_gazebo = {}".format(self.use_gazebo))
-            print("    rviz = {}".format(self.rviz))
+            print("    localizer = {}".format(self.localizer))
             print("    pos_eps, theta_eps = {}, {}".format(self.pos_eps, self.theta_eps))
             print("    stop_time, stop_min_dist = {}, {}".format(self.stop_time, self.stop_min_dist))
 
-        
+    # localizer is either "/odom" or "/map"
+    @property
+    def localizer(self):
+        return rospy.get_param("localizer")
+
+    @localizer.setter
+    def localizer(self):
+        rospy.set_param("localizer")
+
+
+# Helper transform functions
 
 def pose2d_to_pose(pose: Pose2D):
 
     return Pose(Point(pose.x,pose.y,0),Quaternion(*quaternion_from_euler(0,0,pose.theta)))
 
 def pose_to_pose2d(pose: Pose):
+
     quaternion = (pose.orientation.x,
                   pose.orientation.y,
                   pose.orientation.z,
                   pose.orientation.w)
     return Pose2D(pose.position.x, pose.position.y, tf.transformations.euler_from_quaternion(quaternion)[2])
 
-# odom frame
+# All points in world frame
 EXPLORATION_WAYPOINTS = [
     (3.512, 1.847, np.pi/2),
     (3.4, 2.7, np.pi/2),
     (2.5, 2.7, np.pi),
     (2.5, 1.5, -np.pi/2),
-    
 ]
 
 EXPLORATION_WAYPOINTS = [Pose2D(*x) for x in EXPLORATION_WAYPOINTS]
+
 
 class Supervisor:
 
@@ -116,14 +122,7 @@ class Supervisor:
         rospy.Subscriber('/detector/stop_sign', DetectedObject, self.stop_sign_detected_callback)
 
         self.trans_listener = tf.TransformListener()
-        
-    @property
-    def localizer(self):
-        return rospy.get_param("localizer")
 
-    @localizer.setter
-    def localizer(self):
-        rospy.set_param("localizer")
 
     ########## SUBSCRIBER CALLBACKS ##########
 
@@ -158,16 +157,17 @@ class Supervisor:
     def set_goal_pose(self, pose: Pose2D, source_frame="/odom"):
         """ sets goal pose attributes from a Pose2D object, doing any neccesary frame transformations """
 
+        start = rospy.get_rostime()
         while True:
-            #TODO: Add timeout
             try:
                 p = pose2d_to_pose(pose)
-                p = self.trans_listener.transformPose("/map" if self.params.mapping else "/odom", PoseStamped(Header(frame_id=source_frame), p))
+                p = self.trans_listener.transformPose(self.params.localizer, PoseStamped(Header(frame_id=source_frame), p))
                 p = pose_to_pose2d(p.pose)
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
-                # pose = Pose2D(x=self.x,y=self.y,theta=self.theta)
                 rospy.logerr("TransformListener error")
-                pass
+                if rospy.get_rostime() - start > 0.5:
+                    rospy.logerr("Unable to listen to /tf")
+                    return
             else:
                 break
 
@@ -215,6 +215,12 @@ class Supervisor:
                 self.msg_publisher.publish("enable navigator")
                 self.navigator_enabled = True
 
+        if new_mode == Mode.EXPLORE:
+            self.params.localizer = "odom"
+
+        if new_mode == Mode.RESCUE:
+            self.params.localizer = "map"
+
         self.mode = new_mode
 
 
@@ -230,8 +236,7 @@ class Supervisor:
 
         if not self.params.use_gazebo:
             try:
-                origin_frame = "/map" if self.params.mapping else "/odom"
-                translation, rotation = self.trans_listener.lookupTransform(origin_frame, '/base_footprint', rospy.Time(0))
+                translation, rotation = self.trans_listener.lookupTransform(self.params.localizer, '/base_footprint', rospy.Time(0))
                 self.x, self.y = translation[0], translation[1]
                 self.theta = tf.transformations.euler_from_quaternion(rotation)[2]
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
