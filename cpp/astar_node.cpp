@@ -91,9 +91,9 @@ void reconstruct_path(AStarAlgorithmParams &params, asl_turtlebot::AStar::Reques
 }
 
 asl_turtlebot::AStarOutput create_path(AStarAlgorithmParams &params) {
-	int* x_values = new int[params.path.length()];
-	int* y_values = new int[params.path.length()];
-	for (int i = 0; i < params.path.length; i++) {
+	int* x_values = new int[params.path.size()];
+	int* y_values = new int[params.path.size()];
+	for (int i = 0; i < params.path.size(); i++) {
 		x_values[i] = params.path[i];
 		y_values[i] = params.path[i];
 	}
