@@ -3,6 +3,7 @@
 from enum import Enum
 
 import rospy
+import time
 from asl_turtlebot.msg import DetectedObject
 from gazebo_msgs.msg import ModelStates
 from geometry_msgs.msg import Twist, PoseArray, Pose2D, PoseStamped, Pose, Point, Quaternion
@@ -12,6 +13,7 @@ from tf.transformations import quaternion_from_euler
 import numpy as np
 from utils.utils import wrapToPi
 from nav_params import nav_params, POS_EPS, THETA_EPS
+from asl_turtlebot.msg import DetectedObjectList
 
 from std_msgs.msg import Header
 
@@ -86,6 +88,12 @@ class Supervisor:
         # Waypoint counter
         self.waypoint_index = 0
 
+        # rescue waypoints
+        self.rescue_goals
+        self.rescue_index = 0
+        self.rescue_timer = None
+        self.rescue_threshold = 5
+
         # Time to stop at a stop sign
         self.stop_time = 3
         self.stop_sign_start = None
@@ -109,10 +117,21 @@ class Supervisor:
         # Stop sign detector
         rospy.Subscriber('/detector/stop_sign', DetectedObject, self.stop_sign_detected_callback)
 
+        # rescue info subscriber
+        rospy.Subscriber('/rescue', DetectedObjectList, self.update_rescue_goals_callback)
+
         self.trans_listener = tf.TransformListener()
 
 
     ########## SUBSCRIBER CALLBACKS ##########
+
+    def update_rescue_goals_callback(self, msg):
+
+        start = DetectedObject()
+        start.world_pose = Pose(Point(0, 0, 0), quaternion_from_euler(0, 0, 0))
+        self.rescue_goals = [m for m in msg.ob_msgs].extend([start])
+        self.switch_mode(Mode.RESCUE)
+        self.set_goal_pose[self.rescue_index]
 
     def stop_sign_detected_callback(self, msg):
         """ callback for when the detector has found a stop sign. Note that
@@ -244,10 +263,21 @@ class Supervisor:
 
         elif self.mode == Mode.RESCUE:
 
-            # TODO: Loop through rescue waypoints and pause as needed
-
             if self.close_to(self.x_g, self.y_g, self.theta_g):
-                self.switch_mode(Mode.IDLE)
+                # if we've reached home, then idle--we're done!
+                if (self.x_g, self.y_g, self.theta_g) == (0, 0, 0):
+                    self.switch_mode(Mode.IDLE)
+
+                # once we've reached, start waiting
+                elif self.rescue_timer is None:
+                    self.rescue_timer = time.time()
+
+                # once we've waited long enough, stop waiting and go to next one.
+                elif time.time() - self.rescue_timer > self.rescue_threshold:
+                    self.rescue_timer = None
+                    self.rescue_index += 1
+                    self.set_goal_pose(self.rescue_goals[self.rescue_index])
+                    self.pose_to_navigator()
             else:
                 self.pose_to_navigator()
 

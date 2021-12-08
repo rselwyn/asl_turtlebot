@@ -84,6 +84,8 @@ class Detector:
         self.laser_angle_increment = 0.01 # this gets updated
 
         self.object_publishers = {}
+        self.object_publisher_all = rospy.Publisher('/detector/all',
+                        DetectedObject, queue_size=10)
         self.object_labels = load_object_labels(self.params.label_path)
 
         self.tf_listener = TransformListener()
@@ -159,9 +161,11 @@ class Detector:
 
         ########## Code starts here ##########
         # TODO: Compute x, y, z.
-        x = 0.
-        y = 0.
-        z = 1.
+        xc_zc = (u - self.cx) / self.fx    
+        yc_zc = (v - self.cy) / self.fy
+        z = np.sqrt(1 / (1 + xc_zc ** 2 + yc_zc ** 2))
+        x = xc_zc * z
+        y = yc_zc * z
         ########## Code ends here ##########
 
         return x, y, z
@@ -246,6 +250,7 @@ class Detector:
                 object_msg.thetaright = thetaright
                 object_msg.corners = [ymin,xmin,ymax,xmax]
                 self.object_publishers[cl].publish(object_msg)
+                self.object_publisher_all.publish(object_msg)
 
         # displays the camera image
         cv2.imshow("Camera", img_bgr8)
@@ -258,10 +263,10 @@ class Detector:
 
         ########## Code starts here ##########
         # TODO: Extract camera intrinsic parameters.
-        self.cx = 0.
-        self.cy = 0.
-        self.fx = 1.
-        self.fy = 1.
+        self.cx = msg.K[2]
+        self.cy = msg.K[5]
+        self.fx = msg.K[0]
+        self.fy = msg.K[4]
         ########## Code ends here ##########
 
     def laser_callback(self, msg):
