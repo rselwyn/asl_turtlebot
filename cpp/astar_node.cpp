@@ -89,16 +89,51 @@ void reconstruct_path(AStarAlgorithmParams &params, AStar::Request req) {
 
 bool astar_path_plan(AStar::Request &req, AStar::Response &res) {
 	AStarAlgorithmParams algo_params;
-	std::pair<int, int} x_init = {req.x_init[0], req.x_init[1]};
-	std::pair<int, int} x_goal = {req.x_goal[0], req.x_goal[1]};
+	std::pair<int, int> x_init = {req.x_init[0], req.x_init[1]};
+	std::pair<int, int> x_goal = {req.x_goal[0], req.x_goal[1]};
 
 	algo_params.open_set.add(x_init);
 	algo_params.cost_to_arrive[x_init] = 0;
 	self.est_cost_through[x_init] = distance(x_init, x_goal);
 
 	while (algo_params.open_set.size() > 0) {
+		std::pair<int, int> x_current;
+		int min = 100000;
+		for (auto point : algo_params.est_cost_through) {
+			if (algo_params.open_set.count(point) != 1) {
+				continue;
+			}
+			if (algo_params.est_cost_through[point] < min) {
+				x_current = point;
+				min = algo_params.est_cost_through[point];
+			}	
 
+		}
+
+		if (x_current == x_goal) {
+			reconstruct_path(algo_params, req);
+			LOG_INFO("Solution found");
+			return true;
+		}
+
+		algo_params.open_set.remove(x_current);
+		algo_params.closed_set.add(x_current);
+
+		for (auto neighbor : get_neighbors(x_current)) {
+			if (algo_params.closed_set.contains(neighbor)) continue;
+
+			tentative_cost_to_arrive = algo_params.cost_to_arrive[x_current] + distance(x_current, neighbor);
+			if (algo_params.open_set.contains(x_neighbor) != 1) {
+				algo_params.open_set.add(x_neighbor);
+			}
+			else if (tentative_cost_to_arrive > algo_params.cost_to_arrive[neighbor]) continue;
+
+			algo_params.came_from[neighbor] = x_current;
+			algo_params.cost_to_arrive[neighbor] = tentative_cost_to_arrive;
+			algo_params.est_cost_through[neighbor] = tenattive_cost_to_arrive + distance(x_neighbor, x_goal);
+		}
 	}
+	return false;
 }
 
 int main(int argc, char* argv[])
