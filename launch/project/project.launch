@@ -10,8 +10,10 @@
     <arg name="model" default="asl_turtlebot"/>
     <arg name="sim" default="$(arg sim)"/>
   </include>
+  <param name="use_tf" type="bool" value="true" />
 
   <node pkg="asl_turtlebot" type="nav_params.py" name="nav_params" output="screen" />
   <node pkg="asl_turtlebot" type="navigator.py" name="navigator" output="screen" />
+  <node pkg="asl_turtlebot" type="detector.py" name="detector" output="screen" />
   <!-- <node pkg="asl_turtlebot" type="supervisor.py" name="supervisor" output="screen" /> -->
 </launch>

@@ -3,11 +3,12 @@
 import rospy
 import os
 # watch out on the order for the next two imports lol
-from tf import TransformListener
 try:
-    import tensorflow as tf
+    import tensorflow.compat.v1 as tf
+    tf.disable_v2_behavior()
 except:
     pass
+from tf import TransformListener
 import numpy as np
 from sensor_msgs.msg import Image, CameraInfo, LaserScan
 from asl_turtlebot.msg import DetectedObject

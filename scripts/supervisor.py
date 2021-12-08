@@ -89,7 +89,6 @@ class Supervisor:
         self.waypoint_index = 0
 
         # rescue waypoints
-        self.rescue_goals
         self.rescue_index = 0
         self.rescue_timer = None
         self.rescue_threshold = 5
