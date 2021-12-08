@@ -25,7 +25,7 @@ bool isFree(std::pair<int, int> state, double window_size, double resolution, in
 	for (int dx = lower; dx < upper + 1; dx++) {
 		for (int dy = lower; dy < upper + 1; dy++) {
 			std::pair<double, double> old_xy = {state.first + resolution * dx, state.second + resolution * dy};
-			std::pair<int, int> xy = snap_to_grid(old_xy);
+			std::pair<int, int> xy = snap_to_grid(old_xy, resolution);
 			int grid_x = (int) ((xy.first - origin_x) / resolution);
 			int grid_y = (int) ((xy.second - origin_y) / resolution);
 
@@ -35,6 +35,7 @@ bool isFree(std::pair<int, int> state, double window_size, double resolution, in
 		}
 	}
 	return (1 - p_total) < 0.5;
+}
 
 struct AStarAlgorithmParams {
 	std::set<std::pair<int, int>> closed_set;
@@ -45,13 +46,13 @@ struct AStarAlgorithmParams {
 	std::map<std::pair<int, int>, std::pair<int, int>> came_from;
 
 	std::vector<std::pair<int, int>> path;
-}
+};
 
-bool is_state_free(x, AStar::Request &input_params) {
+bool is_state_free(std::pair<int,int> x, asl_turtlebot::AStar::Request &input_params) {
 	return isFree(x) && x.first > 0 && x.second > 0 && x.first < input_params.width && x.second < input_params.height;
 }
 
-std::vector<std::pair<int, int>> get_neighbors(AStar::Request input, int r, std::pair<int, int> xy) {
+std::vector<std::pair<int, int>> get_neighbors(asl_turtlebot::AStar::Request input, int r, std::pair<int, int> xy) {
 	std::vector<std::pair<int, int>> offsets = {{r, 0}, {-r, 0}, {0, r}, {0, -r}, {r,r}, {-r, r}, {r, -r}, {-r, -r}};
 	std::vector<std::pair<int, int>> output = {};
 	for (auto o : offsets) {
@@ -79,7 +80,7 @@ std::pair<int, int> find_best_est_cost_through(AStarAlgorithmParams params) {
 	return min_x;
 }
 
-void reconstruct_path(AStarAlgorithmParams &params, AStar::Request req) {
+void reconstruct_path(AStarAlgorithmParams &params, asl_turtlebot::AStar::Request req) {
 	params.path = {{req.x_goal.first, req.x_goal.second}}; // reset the path
 	auto current_point = params.path.first;
 	while (current_point != {req.x_init.first, req.x_init.second}) {
@@ -89,7 +90,7 @@ void reconstruct_path(AStarAlgorithmParams &params, AStar::Request req) {
 	std::reverse(params.path.begin(), params.path.end());
 }
 
-nav_msgs::AStarOutput create_path(AStarAlgorithmParams &params) {
+asl_turtlebot::AStarOutput create_path(AStarAlgorithmParams &params) {
 	int* x_values = new int[params.path.length()];
 	int* y_values = new int[params.path.length()];
 	for (int i = 0; i < params.path.length; i++) {
@@ -102,7 +103,7 @@ nav_msgs::AStarOutput create_path(AStarAlgorithmParams &params) {
 	return output;
 }
 
-bool astar_path_plan(AStar::Request &req, AStar::Response &res) {
+bool astar_path_plan(asl_turtlebot::AStar::Request &req, asl_turtlebot::AStar::Response &res) {
 	AStarAlgorithmParams algo_params;
 	std::pair<int, int> x_init = {req.x_init.first, req.x_init.second};
 	std::pair<int, int> x_goal = {req.x_goal.first, req.x_goal.second};
