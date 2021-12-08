@@ -108,7 +108,7 @@ bool astar_path_plan(asl_turtlebot::AStar::Request &req, asl_turtlebot::AStar::R
 	std::pair<int, int> x_init = {req.x_init.first, req.x_init.second};
 	std::pair<int, int> x_goal = {req.x_goal.first, req.x_goal.second};
 
-	algo_params.open_set.add(x_init);
+	algo_params.open_set.insert(x_init);
 	algo_params.cost_to_arrive[x_init] = 0;
 	self.est_cost_through[x_init] = distance(x_init, x_goal);
 
@@ -128,27 +128,27 @@ bool astar_path_plan(asl_turtlebot::AStar::Request &req, asl_turtlebot::AStar::R
 
 		if (x_current == x_goal) {
 			reconstruct_path(algo_params, req);
-			LOG_INFO("Solution found");
+			ROS_INFO("Solution found");
 			res.status = true;
 			res.output_path = create_path(algo_params);
 			return true;
 		}
 
-		algo_params.open_set.remove(x_current);
-		algo_params.closed_set.add(x_current);
+		algo_params.open_set.erase(x_current);
+		algo_params.closed_set.insert(x_current);
 
 		for (auto neighbor : get_neighbors(x_current)) {
-			if (algo_params.closed_set.contains(neighbor)) continue;
+			if (algo_params.closed_set.count(neighbor) == 1) continue;
 
-			tentative_cost_to_arrive = algo_params.cost_to_arrive[x_current] + distance(x_current, neighbor);
-			if (algo_params.open_set.contains(x_neighbor) != 1) {
-				algo_params.open_set.add(x_neighbor);
+			double tentative_cost_to_arrive = algo_params.cost_to_arrive[x_current] + distance(x_current, neighbor);
+			if (algo_params.open_set.count(neighbor) != 1) {
+				algo_params.open_set.insert(neighbor);
 			}
 			else if (tentative_cost_to_arrive > algo_params.cost_to_arrive[neighbor]) continue;
 
 			algo_params.came_from[neighbor] = x_current;
 			algo_params.cost_to_arrive[neighbor] = tentative_cost_to_arrive;
-			algo_params.est_cost_through[neighbor] = tenattive_cost_to_arrive + distance(x_neighbor, x_goal);
+			algo_params.est_cost_through[neighbor] = tenattive_cost_to_arrive + distance(neighbor, x_goal);
 		}
 	}
 	res.status = false;
@@ -162,7 +162,7 @@ int main(int argc, char* argv[])
   ros::NodeHandle nh;
 
   ROS_INFO("Initializing astar node.");
-  ros::ServiceServer service = n.advertiseService("astar_planner", astar_path_plan);
+  ros::ServiceServer service = nh.advertiseService("astar_planner", astar_path_plan);
   ROS_INFO("Advertising astar_planner");
 
   // Don't exit the program.
