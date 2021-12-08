@@ -5,5 +5,5 @@ uint32[] x_goal
 StochOccupancyGrid grid
 uint32 plan_resolution
 ---
-nav_msgs.Path output_path
+AStarOutput output_path
 boolean status

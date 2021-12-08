@@ -132,6 +132,9 @@ include_directories(
 ## Declare a C++ executable
 # add_executable(asl_turtlebot_node src/asl_turtlebot_node.cpp)
 
+add_executable(astar_node cpp/astar_node.cpp)
+target_link_libraries(astar_node ${catkin_LIBRARIES})
+
 ## Add cmake target dependencies of the executable
 ## same as for the library above
 # add_dependencies(asl_turtlebot_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})

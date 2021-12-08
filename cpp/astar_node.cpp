@@ -4,6 +4,8 @@
 #include <ros/ros.h>
 #include <AStar.h>
 #include <math.h>       /* round, floor, ceil, trunc */
+#include "AStarOutput.h"
+#include "StateOccupancyGrid.h"
 
 #include <set>
 #include <map>
@@ -87,6 +89,19 @@ void reconstruct_path(AStarAlgorithmParams &params, AStar::Request req) {
 	std::reverse(params.path.begin(), params.path.end());
 }
 
+nav_msgs::AStarOutput create_path(AStarAlgorithmParams &params) {
+	int* x_values = new int[params.path.length()];
+	int* y_values = new int[params.path.length()];
+	for (int i = 0; i < params.path.length; i++) {
+		x_values[i] = params.path[i];
+		y_values[i] = params.path[i];
+	}
+	nav_msgs::AStarOutput output;
+	output.x_values = x_values;
+	output.y_values = y_values;
+	return output;
+}
+
 bool astar_path_plan(AStar::Request &req, AStar::Response &res) {
 	AStarAlgorithmParams algo_params;
 	std::pair<int, int> x_init = {req.x_init[0], req.x_init[1]};
@@ -113,6 +128,8 @@ bool astar_path_plan(AStar::Request &req, AStar::Response &res) {
 		if (x_current == x_goal) {
 			reconstruct_path(algo_params, req);
 			LOG_INFO("Solution found");
+			res.status = true;
+			res.output_path = create_path(algo_params);
 			return true;
 		}
 
@@ -133,6 +150,7 @@ bool astar_path_plan(AStar::Request &req, AStar::Response &res) {
 			algo_params.est_cost_through[neighbor] = tenattive_cost_to_arrive + distance(x_neighbor, x_goal);
 		}
 	}
+	res.status = false;
 	return false;
 }
 
