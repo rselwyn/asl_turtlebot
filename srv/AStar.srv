@@ -1,0 +1,9 @@
+uint32[] state_min
+uint32[] state_max
+uint32[] x_init
+uint32[] x_goal
+StochOccupancyGrid grid
+uint32 plan_resolution
+---
+nav_msgs.Path output_path
+boolean status
