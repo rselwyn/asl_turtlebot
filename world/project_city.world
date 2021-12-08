@@ -939,7 +939,7 @@
           <geometry>
             <mesh>
               <uri>model://person_standing/meshes/standing.dae</uri>
-              <scale>0.15 0.15 0.15</scale>
+              <scale>0.25 0.25 0.25</scale>
             </mesh>
           </geometry>
           <max_contacts>10</max_contacts>
@@ -962,7 +962,7 @@
           <geometry>
             <mesh>
               <uri>model://person_standing/meshes/standing.dae</uri>
-              <scale>0.15 0.15 0.15</scale>
+              <scale>0.25 0.25 0.25</scale>
             </mesh>
           </geometry>
         </visual>
@@ -984,7 +984,7 @@
           <geometry>
             <mesh>
               <uri>model://person_walking/meshes/walking.dae</uri>
-              <scale>0.15 0.15 0.15</scale>
+              <scale>0.25 0.25 0.25</scale>
             </mesh>
           </geometry>
           <max_contacts>10</max_contacts>
@@ -1007,7 +1007,7 @@
           <geometry>
             <mesh>
               <uri>model://person_walking/meshes/walking.dae</uri>
-              <scale>0.15 0.15 0.15</scale>
+              <scale>0.25 0.25 0.25</scale>
             </mesh>
           </geometry>
         </visual>
@@ -1019,127 +1019,6 @@
       <pose>0.788818 2.93509 0 0 0 -1.57068</pose>
     </model>
 
-    <model name='suv'>
-      <static>1</static>
-      <link name='link'>
-        <collision name='collision'>
-          <pose>0 0 0 0 0 -1.5708</pose>
-          <geometry>
-            <mesh>
-              <scale>0.0035 0.0035 0.0035</scale>
-              <uri>model://suv/meshes/suv.obj</uri>
-            </mesh>
-          </geometry>
-          <max_contacts>10</max_contacts>
-          <surface>
-            <contact>
-              <ode/>
-            </contact>
-            <bounce/>
-            <friction>
-              <torsional>
-                <ode/>
-              </torsional>
-              <ode/>
-            </friction>
-          </surface>
-        </collision>
-        <visual name='visual'>
-          <pose>0 0 0 0 0 -1.5708</pose>
-          <geometry>
-            <mesh>
-              <scale>0.0035 0.0035 0.0035</scale>
-              <uri>model://suv/meshes/suv.obj</uri>
-            </mesh>
-          </geometry>
-        </visual>
-        <self_collide>0</self_collide>
-        <enable_wind>0</enable_wind>
-        <kinematic>0</kinematic>
-      </link>
-      <pose>2.484 1.13943 0 0 -0 1.57481</pose>
-    </model>
-
-    <model name='hatchback_blue'>
-      <static>1</static>
-      <link name='link'>
-        <collision name='collision'>
-          <pose>0 0 0 0 -0 1.5708</pose>
-          <geometry>
-            <mesh>
-              <scale>0.0017 0.0017 0.0017</scale>
-              <uri>model://hatchback_blue/meshes/hatchback.obj</uri>
-            </mesh>
-          </geometry>
-          <max_contacts>10</max_contacts>
-          <surface>
-            <contact>
-              <ode/>
-            </contact>
-            <bounce/>
-            <friction>
-              <torsional>
-                <ode/>
-              </torsional>
-              <ode/>
-            </friction>
-          </surface>
-        </collision>
-        <visual name='visual'>
-          <pose>0 0 0 0 -0 1.5708</pose>
-          <geometry>
-            <mesh>
-              <scale>0.0017 0.0017 0.0017</scale>
-              <uri>model://hatchback_blue/meshes/hatchback.obj</uri>
-            </mesh>
-          </geometry>
-        </visual>
-        <self_collide>0</self_collide>
-        <enable_wind>0</enable_wind>
-        <kinematic>0</kinematic>
-      </link>
-      <pose>0.121766 0.681768 0 0 0 -1.56372</pose>
-    </model>
-
-    <model name='bus'>
-      <static>1</static>
-      <link name='link'>
-        <collision name='collision'>
-          <geometry>
-            <mesh>
-              <scale>0.00055 0.00055 0.00055</scale>
-              <uri>model://bus/meshes/bus.obj</uri>
-            </mesh>
-          </geometry>
-          <max_contacts>10</max_contacts>
-          <surface>
-            <contact>
-              <ode/>
-            </contact>
-            <bounce/>
-            <friction>
-              <torsional>
-                <ode/>
-              </torsional>
-              <ode/>
-            </friction>
-          </surface>
-        </collision>
-        <visual name='visual'>
-          <geometry>
-            <mesh>
-              <scale>0.00055 0.00055 0.00055</scale>
-              <uri>model://bus/meshes/bus.obj</uri>
-            </mesh>
-          </geometry>
-        </visual>
-        <self_collide>0</self_collide>
-        <enable_wind>0</enable_wind>
-        <kinematic>0</kinematic>
-      </link>
-      <pose>1.72833 2.58 0 0 -0 1.55845</pose>
-    </model>
-
     <model name='House 1'>
       <static>1</static>
       <link name='link'>
@@ -1147,7 +1026,7 @@
           <geometry>
             <mesh>
               <uri>model://house_1/meshes/house_1.dae</uri>
-              <scale>.06 .06 .06</scale>
+              <scale>.055 .055 .09</scale>
             </mesh>
           </geometry>
           <max_contacts>10</max_contacts>
@@ -1168,7 +1047,7 @@
           <geometry>
             <mesh>
               <uri>model://house_1/meshes/house_1.dae</uri>
-              <scale>.06 .06 .06</scale>
+              <scale>.055 .055 .09</scale>
             </mesh>
           </geometry>
           <material>
@@ -1186,7 +1065,7 @@
         <enable_wind>0</enable_wind>
         <kinematic>0</kinematic>
       </link>
-      <pose>2.87 1 0 0 -0 -1.568152</pose>
+      <pose>2.91 1 0 0 -0 -1.568152</pose>
     </model>
 
     <model name='House 2'>
@@ -1196,7 +1075,7 @@
           <geometry>
             <mesh>
               <uri>model://house_1/meshes/house_1.dae</uri>
-              <scale>.06 .06 .06</scale>
+              <scale>.055 .055 .09</scale>
             </mesh>
           </geometry>
           <max_contacts>10</max_contacts>
@@ -1217,7 +1096,7 @@
           <geometry>
             <mesh>
               <uri>model://house_1/meshes/house_1.dae</uri>
-              <scale>.06 .06 .06</scale>
+              <scale>.055 .055 .09</scale>
             </mesh>
           </geometry>
           <material>
@@ -1235,7 +1114,7 @@
         <enable_wind>0</enable_wind>
         <kinematic>0</kinematic>
       </link>
-      <pose>2.87 1.8 0 0 -0 -1.568152</pose>
+      <pose>2.91 1.8 0 0 -0 -1.568152</pose>
     </model>
 
 
