@@ -2,16 +2,18 @@
 # update shebang
 
 import tf
+import numpy as np
 import rospy
 from nav_msgs.msg import OccupancyGrid, MapMetaData, Path
-from geometry_msgs.msg import Twist, Pose2D, PoseStamped
+from geometry_msgs.msg import Twist, Pose2D, PoseStamped, Pose, Point
 from asl_turtlebot.msg import DetectedObject
 from std_msgs.msg import String, Header
+from tf.transformations import quaternion_from_euler
 from utils.grids import StochOccupancyGrid2D
 
 class SetTarget():
     def __int__(self):
-        self.seen = {}
+        self.seen = []
         self.num_seen = 0
         self.trans_listener = tf.TransformListener()
         rospy.Subscriber("/detector/all", DetectedObject, self.update_seen_callback)
@@ -22,7 +24,14 @@ class SetTarget():
         # TODO: expand logging
 
         # list object if not already seen
-        pose = self.trans_listener.transformPose("/map", PoseStamped(Header(frame_id="/odom"), pose))
+
+        theta = (data.thetaleft + data.thetaright) / 2
+        pose = Pose(Point(data.x, data.y, 0), quaternion_from_euler(0, 0, theta))
+        world_pose = self.trans_listener.transformPose("/map", PoseStamped(Header(frame_id="/tf"), pose))
+        
+        filtered = [el for el in self.seen if el.name == data.name]
+        seen_sorted = sorted(filtered, 
+            lambda key : (data) ** .5)
         if data.id not in self.seen:
             self.
             rospy.loginfo(f"Object #{len(self.seen)}We've just observed a {data.name} at (") 
