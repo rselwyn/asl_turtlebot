@@ -115,7 +115,7 @@ class Supervisor:
 
         start = DetectedObject()
         start.world_pose = Pose(Point(0, 0, 0), quaternion_from_euler(0, 0, 0))
-        self.rescue_goals = [m for m in msg.ob_msgs].extend([start])
+        self.rescue_goals = [m.world_pose for m in msg.ob_msgs].extend([start])
         self.switch_mode(Mode.RESCUE)
         self.set_goal_pose[self.rescue_index]
 
