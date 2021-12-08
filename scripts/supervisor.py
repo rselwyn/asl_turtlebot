@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 
 from enum import Enum
-from os import POSIX_FADV_DONTNEED
 
 import rospy
 from asl_turtlebot.msg import DetectedObject
 from gazebo_msgs.msg import ModelStates
-from geometry_msgs.msg import Twist, PoseArray, Pose2D, PoseStamped, Pose, Point
+from geometry_msgs.msg import Twist, PoseArray, Pose2D, PoseStamped, Pose, Point, Quaternion
 from std_msgs.msg import Float32MultiArray, String
 import tf
 from tf.transformations import quaternion_from_euler
+import numpy as np
+from utils.utils import wrapToPi
 
 from std_msgs.msg import Header
 
@@ -27,7 +28,7 @@ class SupervisorParams:
     def __init__(self, verbose=False):
         # If sim is True (i.e. using gazebo), we want to subscribe to
         # /gazebo/model_states. Otherwise, we will use a TF lookup.
-        self.use_gazebo = rospy.get_param("sim")
+        self.use_gazebo = False#rospy.get_param("sim")
 
         # How is nav_cmd being decided -- human manually setting it, or rviz
         self.rviz = rospy.get_param("rviz")
@@ -36,8 +37,8 @@ class SupervisorParams:
         self.mapping = rospy.get_param("map")
 
         # Threshold at which we consider the robot at a location
-        self.pos_eps = rospy.get_param("~pos_eps", 0.1)
-        self.theta_eps = rospy.get_param("~theta_eps", 0.3)
+        self.pos_eps = rospy.get_param("~pos_eps", 0.02)
+        self.theta_eps = rospy.get_param("~theta_eps", 0.05)
 
         # Time to stop at a stop sign
         self.stop_time = rospy.get_param("~stop_time", 3.)
@@ -55,7 +56,8 @@ class SupervisorParams:
             print("    stop_time, stop_min_dist = {}, {}".format(self.stop_time, self.stop_min_dist))
 
 def pose2d_to_pose(pose: Pose2D):
-    return Pose(Point(pose.x,pose.y,0),quaternion_from_euler(0,0,pose.theta))
+
+    return Pose(Point(pose.x,pose.y,0),Quaternion(*quaternion_from_euler(0,0,pose.theta)))
 
 def pose_to_pose2d(pose: Pose):
     quaternion = (pose.orientation.x,
@@ -64,12 +66,16 @@ def pose_to_pose2d(pose: Pose):
                   pose.orientation.w)
     return Pose2D(pose.position.x, pose.position.y, tf.transformations.euler_from_quaternion(quaternion)[2])
 
-
 # odom frame
 EXPLORATION_WAYPOINTS = [
-    Pose2D(x=0,y=0,theta=0),
-    Pose2D(x=0,y=0,theta=1)
+    (3.512, 1.847, np.pi/2),
+    (3.4, 2.7, np.pi/2),
+    (2.5, 2.7, np.pi),
+    (2.5, 1.5, -np.pi/2),
+    
 ]
+
+EXPLORATION_WAYPOINTS = [Pose2D(*x) for x in EXPLORATION_WAYPOINTS]
 
 class Supervisor:
 
@@ -99,7 +105,7 @@ class Supervisor:
         ########## PUBLISHERS ##########
 
         # Command pose for controller
-        self.pose_goal_publisher = rospy.Publisher('/cmd_pose', Pose2D, queue_size=10)
+        self.pose_goal_publisher = rospy.Publisher('/cmd_nav', Pose2D, queue_size=10)
 
         # Command vel (used for idling)
         self.cmd_vel_publisher = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
@@ -118,11 +124,11 @@ class Supervisor:
         self.trans_listener = tf.TransformListener()
 
         # If using rviz, we can subscribe to nav goal click
-        if self.params.rviz:
-            rospy.Subscriber('/move_base_simple/goal', PoseStamped, self.rviz_goal_callback)
-        else:
-            self.x_g, self.y_g, self.theta_g = 1.5, -4., 0.
-            self.set_mode(Mode.EXPLORE)
+        # if self.params.rviz:
+        #     rospy.Subscriber('/move_base_simple/goal', PoseStamped, self.rviz_goal_callback)
+        # else:
+        #     self.x_g, self.y_g, self.theta_g = 1.5, -4., 0.
+        #     self.set_mode(Mode.EXPLORE)
         
 
     ########## SUBSCRIBER CALLBACKS ##########
@@ -191,13 +197,22 @@ class Supervisor:
     def set_goal_pose(self, pose: Pose2D, source_frame="/odom"):
         """ sets goal pose attributes from a Pose2D object, doing any neccesary frame transformations """
 
-        pose = pose2d_to_pose(pose)
-        pose = self.trans_listener.transformPose("/map" if self.params.mapping else "/odom", PoseStamped(Header(frame_id=source_frame), pose))
-        pose = pose_to_pose2d(pose.pose)
+        while True:
+            #TODO: Add timeout
+            try:
+                p = pose2d_to_pose(pose)
+                p = self.trans_listener.transformPose("/map" if self.params.mapping else "/odom", PoseStamped(Header(frame_id=source_frame), p))
+                p = pose_to_pose2d(p.pose)
+            except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+                # pose = Pose2D(x=self.x,y=self.y,theta=self.theta)
+                rospy.logerr("TransformListener error")
+                pass
+            else:
+                break
 
-        self.x_g = pose.x
-        self.y_g = pose.y
-        self.theta_g = pose.theta
+        self.x_g = p.x
+        self.y_g = p.y
+        self.theta_g = p.theta
 
     def stay_idle(self):
         """ sends zero velocity to stay put """
@@ -207,9 +222,13 @@ class Supervisor:
     def close_to(self, x, y, theta):
         """ checks if the robot is at a pose within some threshold """
 
+        # rospy.loginfo(f"x_diff {abs(x - self.x)}")
+        # rospy.loginfo(f"y_diff {abs(y - self.y)}")
+        # rospy.loginfo(f"theta_diff {wrapToPi(abs(theta - self.theta))}")
+
         return abs(x - self.x) < self.params.pos_eps and \
                abs(y - self.y) < self.params.pos_eps and \
-               abs(theta - self.theta) < self.params.theta_eps
+               abs(wrapToPi(theta - self.theta)) < self.params.theta_eps
 
     def init_stop_sign(self):
         """ initiates a stop sign maneuver """
@@ -234,6 +253,8 @@ class Supervisor:
             if not self.navigator_enabled:
                 self.msg_publisher.publish("enable navigator")
                 self.navigator_enabled = True
+
+        self.mode = new_mode
 
 
     ########## Code ends here ##########
@@ -287,6 +308,7 @@ class Supervisor:
 
         elif self.mode == Mode.EXPLORE:
             if self.close_to(self.x_g, self.y_g, self.theta_g):
+                rospy.loginfo("CLOSE!")
                 if self.waypoint_index < len(EXPLORATION_WAYPOINTS)-1:
                     self.waypoint_index += 1
                     self.set_goal_pose(EXPLORATION_WAYPOINTS[self.waypoint_index])
@@ -305,10 +327,15 @@ class Supervisor:
         else:
             raise Exception("This mode is not supported: {}".format(str(self.mode)))
 
+    def start(self):
+        self.set_mode(Mode.EXPLORE)
+        self.set_goal_pose(EXPLORATION_WAYPOINTS[self.waypoint_index])
+
         ############ Code ends here ############
 
     def run(self):
         rate = rospy.Rate(10) # 10 Hz
+        self.start()
         while not rospy.is_shutdown():
             self.loop()
             rate.sleep()

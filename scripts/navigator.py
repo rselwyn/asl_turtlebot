@@ -35,7 +35,7 @@ class Navigator:
 
     def __init__(self):
         rospy.init_node("turtlebot_navigator", anonymous=True)
-        self.mode = Mode.DISABLED
+        self.mode = Mode.IDLE # CHANGE BACK TO DISABLED
 
         # current state
         self.x = 0.0
@@ -181,7 +181,7 @@ class Navigator:
                 self.map_height,
                 self.map_origin[0],
                 self.map_origin[1],
-                8,
+                2,
                 self.map_probs,
             )
             if self.x_g is not None:
@@ -275,6 +275,15 @@ class Navigator:
         Runs appropriate controller depending on the mode. Assumes all controllers
         are all properly set up / with the correct goals loaded
         """
+        
+        rospy.loginfo(f"x_map {self.x}")
+        rospy.loginfo(f"y_map {self.y}")
+        rospy.loginfo(f"theta_map {self.theta}")
+
+        rospy.loginfo(f"x_goal {self.x_g}")
+        rospy.loginfo(f"y_goal {self.y_g}")
+        rospy.loginfo(f"theta_goal {self.theta_g}")
+
         t = self.get_current_plan_time()
 
         if self.mode == Mode.PARK:
@@ -326,7 +335,9 @@ class Navigator:
         state_max = self.snap_to_grid((self.plan_horizon, self.plan_horizon))
         x_init = self.snap_to_grid((self.x, self.y))
         self.plan_start = x_init
+        rospy.loginfo(f"x_init: {x_init}")
         x_goal = self.snap_to_grid((self.x_g, self.y_g))
+        rospy.loginfo(f"x_goal: {x_goal}")
         problem = AStar(
             state_min,
             state_max,
@@ -348,6 +359,7 @@ class Navigator:
         # Check whether path is too short
         if len(planned_path) < 4:
             rospy.loginfo("Path too short to track")
+            self.pose_controller.load_goal(self.x_g, self.y_g, self.theta_g)
             self.switch_mode(Mode.PARK)
             return
 
@@ -455,7 +467,6 @@ class Navigator:
                     self.switch_mode(Mode.IDLE)
 
             self.publish_control()
-
 
 if __name__ == "__main__":
     nav = Navigator()

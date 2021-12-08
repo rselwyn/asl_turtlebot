@@ -1,5 +1,6 @@
 import numpy as np
 from utils import wrapToPi
+import rospy
 
 # command zero velocities once we are this close to the goal
 RHO_THRES = 0.05
@@ -21,8 +22,11 @@ class HeadingController:
         self.th_g = th_g
 
     def compute_control(self, x, y, th, t):
+        # rospy.loginfo(f"theta: {th}")
+        # rospy.loginfo(f"theta_g: {self.th_g}")
         err = wrapToPi(self.th_g - th)
         om = self.kp*err
+        # rospy.loginfo(f"om: {om}")
 
         # apply control limits
         V = 0
