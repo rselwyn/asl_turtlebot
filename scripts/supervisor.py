@@ -11,7 +11,7 @@ import tf
 from tf.transformations import quaternion_from_euler
 import numpy as np
 from utils.utils import wrapToPi
-from nav_consts import POS_EPS, THETA_EPS
+from nav_params import nav_params, POS_EPS, THETA_EPS
 
 from std_msgs.msg import Header
 
@@ -22,38 +22,6 @@ class Mode(Enum):
     RESCUE = 3 # rescuing specified objects
     STOP_SIGN = 4 # waiting at a stop sign
     LISTEN = 5 # listening for objects to rescue
-
-
-class SupervisorParams:
-
-    def __init__(self, verbose=False):
-
-        # Threshold at which we consider the robot at a location
-        self.pos_eps = POS_EPS
-        self.theta_eps = THETA_EPS
-
-        # Time to stop at a stop sign
-        self.stop_time = 3
-        self.stop_sign_start = None
-
-        # Minimum distance from a stop sign to obey it
-        self.stop_min_dist = 0.5
-
-        if verbose:
-            print("SupervisorParams:")
-            print("    localizer = {}".format(self.localizer))
-            print("    pos_eps, theta_eps = {}, {}".format(self.pos_eps, self.theta_eps))
-            print("    stop_time, stop_min_dist = {}, {}".format(self.stop_time, self.stop_min_dist))
-
-    # localizer is either "/odom" or "/map"
-    @property
-    def localizer(self):
-        return rospy.get_param("localizer")
-
-    @localizer.setter
-    def localizer(self):
-        rospy.set_param("localizer")
-
 
 # Helper transform functions
 
@@ -79,13 +47,11 @@ EXPLORATION_WAYPOINTS = [
 
 EXPLORATION_WAYPOINTS = [Pose2D(*x) for x in EXPLORATION_WAYPOINTS]
 
-
 class Supervisor:
 
     def __init__(self):
         # Initialize ROS node
         rospy.init_node('turtlebot_supervisor', anonymous=True)
-        self.params = SupervisorParams(verbose=True)
 
         # Current state
         self.x = 0
@@ -103,7 +69,15 @@ class Supervisor:
         self.mode_before_stop = None
         self.navigator_enabled = False
 
+        # Waypoint counter
         self.waypoint_index = 0
+
+        # Time to stop at a stop sign
+        self.stop_time = 3
+        self.stop_sign_start = None
+
+        # Minimum distance from a stop sign to obey it
+        self.stop_min_dist = 0.5
 
         ########## PUBLISHERS ##########
 
@@ -134,7 +108,7 @@ class Supervisor:
         dist = msg.distance
 
         # if close enough and in nav mode, stop
-        if dist > 0 and dist < self.params.stop_min_dist and self.mode == Mode.EXPLORE:
+        if dist > 0 and dist < self.stop_min_dist and self.mode == Mode.EXPLORE:
             self.init_stop_sign()
 
 
@@ -161,7 +135,7 @@ class Supervisor:
         while True:
             try:
                 p = pose2d_to_pose(pose)
-                p = self.trans_listener.transformPose(self.params.localizer, PoseStamped(Header(frame_id=source_frame), p))
+                p = self.trans_listener.transformPose(nav_params.localizer, PoseStamped(Header(frame_id=source_frame), p))
                 p = pose_to_pose2d(p.pose)
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
                 rospy.logerr("TransformListener error")
@@ -187,24 +161,24 @@ class Supervisor:
         # rospy.loginfo(f"y_diff {abs(y - self.y)}")
         # rospy.loginfo(f"theta_diff {wrapToPi(abs(theta - self.theta))}")
 
-        return abs(x - self.x) < self.params.pos_eps and \
-               abs(y - self.y) < self.params.pos_eps and \
-               abs(wrapToPi(theta - self.theta)) < self.params.theta_eps
+        return abs(x - self.x) < POS_EPS and \
+               abs(y - self.y) < POS_EPS and \
+               abs(wrapToPi(theta - self.theta)) < THETA_EPS
 
     def init_stop_sign(self):
         """ initiates a stop sign maneuver """
         self.stop_sign_start = rospy.get_rostime()
         self.mode_before_stop = self.mode
-        self.set_mode(Mode.STOP_SIGN)
+        self.switch_mode(Mode.STOP_SIGN)
 
     def has_stopped(self):
         """ checks if stop sign maneuver is over """
 
         return self.mode == Mode.STOP_SIGN and \
-               rospy.get_rostime() - self.stop_sign_start > rospy.Duration.from_sec(self.params.stop_time)
+               rospy.get_rostime() - self.stop_sign_start > rospy.Duration.from_sec(self.stop_time)
 
-    def set_mode(self, new_mode):
-        """ set mode and enable / disable navigator as needed """
+    def switch_mode(self, new_mode):
+        """ switch mode and enable / disable navigator as needed """
 
         if new_mode == Mode.IDLE or new_mode == Mode.STOP_SIGN or new_mode == Mode.LISTEN:
             if self.navigator_enabled:
@@ -216,10 +190,10 @@ class Supervisor:
                 self.navigator_enabled = True
 
         if new_mode == Mode.EXPLORE:
-            self.params.localizer = "odom"
+            nav_params.localizer = "odom"
 
         if new_mode == Mode.RESCUE:
-            self.params.localizer = "map"
+            nav_params.localizer = "map"
 
         self.mode = new_mode
 
@@ -234,13 +208,12 @@ class Supervisor:
         mode (i.e. the finite state machine's state), if takes appropriate
         actions. This function shouldn't return anything """
 
-        if not self.params.use_gazebo:
-            try:
-                translation, rotation = self.trans_listener.lookupTransform(self.params.localizer, '/base_footprint', rospy.Time(0))
-                self.x, self.y = translation[0], translation[1]
-                self.theta = tf.transformations.euler_from_quaternion(rotation)[2]
-            except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
-                pass
+        try:
+            translation, rotation = self.trans_listener.lookupTransform(nav_params.localizer, '/base_footprint', rospy.Time(0))
+            self.x, self.y = translation[0], translation[1]
+            self.theta = tf.transformations.euler_from_quaternion(rotation)[2]
+        except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+            pass
 
         # logs the current mode
         if self.prev_mode != self.mode:
@@ -260,14 +233,14 @@ class Supervisor:
             # TODO: Loop through rescue waypoints and pause as needed
 
             if self.close_to(self.x_g, self.y_g, self.theta_g):
-                self.set_mode(Mode.IDLE)
+                self.switch_mode(Mode.IDLE)
             else:
                 self.pose_to_navigator()
 
         elif self.mode == Mode.STOP_SIGN:
             # At a stop sign
             if self.has_stopped():
-                self.set_mode(self.mode_before_stop)
+                self.switch_mode(self.mode_before_stop)
                 self.mode_before_stop = None
             else:
                 self.stay_idle()
@@ -280,7 +253,7 @@ class Supervisor:
                     self.set_goal_pose(EXPLORATION_WAYPOINTS[self.waypoint_index])
                     self.pose_to_navigator()
                 else:
-                    self.set_mode(Mode.LISTEN)
+                    self.switch_mode(Mode.LISTEN)
             else:
                 self.pose_to_navigator()
         
@@ -294,7 +267,7 @@ class Supervisor:
             raise Exception("This mode is not supported: {}".format(str(self.mode)))
 
     def start(self):
-        self.set_mode(Mode.EXPLORE)
+        self.switch_mode(Mode.EXPLORE)
         self.set_goal_pose(EXPLORATION_WAYPOINTS[self.waypoint_index])
 
         ############ Code ends here ############
