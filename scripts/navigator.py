@@ -15,8 +15,8 @@ import matplotlib.pyplot as plt
 from controllers import PoseController, TrajectoryTracker, HeadingController
 from enum import Enum
 
-from dynamic_reconfigure.server import Server
-from asl_turtlebot.cfg import NavigatorConfig
+# from dynamic_reconfigure.server import Server
+# from asl_turtlebot.cfg import NavigatorConfig
 from nav_params import nav_params, POS_EPS, THETA_EPS
 
 # state machine modes, not all implemented
@@ -117,7 +117,7 @@ class Navigator:
 
         self.trans_listener = tf.TransformListener()
 
-        self.cfg_srv = Server(NavigatorConfig, self.dyn_cfg_callback)
+        # self.cfg_srv = Server(NavigatorConfig, self.dyn_cfg_callback)
 
         rospy.Subscriber("/map", OccupancyGrid, self.map_callback)
         rospy.Subscriber("/map_metadata", MapMetaData, self.map_md_callback)
