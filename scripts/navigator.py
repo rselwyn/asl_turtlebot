@@ -130,9 +130,10 @@ class Navigator:
 
     def supervisor_callback(self, string):
 
-        if string == "disable navigator":
+        if string.data == "disable navigator":
+            rospy.loginfo("DISABLING")
             self.switch_mode(Mode.DISABLED)
-        elif string == "enable navigator":
+        elif string.data == "enable navigator":
             self.replan()
 
     def cmd_nav_callback(self, data):

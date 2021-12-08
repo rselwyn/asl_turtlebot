@@ -138,7 +138,7 @@ class Detector:
         f_scores, f_boxes, f_classes = [], [], []
         f_num = 0
 
-        for i in range(num):
+        for i in range(int(num)):
             if scores[i] >= self.params.min_score:
                 f_scores.append(scores[i])
                 f_boxes.append(boxes[i])
@@ -250,6 +250,7 @@ class Detector:
                 object_msg.thetaleft = thetaleft
                 object_msg.thetaright = thetaright
                 object_msg.corners = [ymin,xmin,ymax,xmax]
+                rospy.loginfo(object_msg)
                 self.object_publishers[cl].publish(object_msg)
                 self.object_publisher_all.publish(object_msg)
 

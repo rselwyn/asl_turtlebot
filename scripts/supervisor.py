@@ -46,19 +46,19 @@ EXPLORATION_WAYPOINTS = [
     (2.39, 2.72, np.pi), # top middle
     (2.39, 1.85, -np.pi/2),
     (2.25, 1.5, -np.pi/2),
-    (2.25, 0.3, -np.pi/2), # bottom middle
-    (0.36, 0.37, np.pi), # bottom left
-    (0.31, 1.54, np.pi/2), # center left
-    (2.26, 1.54, 0), # center
-    (2.39, 2.87, np.pi/2), # top middle
-    (1.45, 2.87, np.pi),
-    (0.65, 2.64, -2.94),
-    (0.31, 2.28, -np.pi/2),
-    (0.31, 1.54, -np.pi/2), # center left
-    (2.26, 1.54, 0), # center
-    (2.25, 0.3, -np.pi/2), # bottom middle
-    (3.4, 0.3, 0), # bottom right
-    (3.4, 1.8, np.pi/2) # center right
+    # (2.25, 0.3, -np.pi/2), # bottom middle
+    # (0.36, 0.37, np.pi), # bottom left
+    # (0.31, 1.54, np.pi/2), # center left
+    # (2.26, 1.54, 0), # center
+    # (2.39, 2.87, np.pi/2), # top middle
+    # (1.45, 2.87, np.pi),
+    # (0.65, 2.64, -2.94),
+    # (0.31, 2.28, -np.pi/2),
+    # (0.31, 1.54, -np.pi/2), # center left
+    # (2.26, 1.54, 0), # center
+    # (2.25, 0.3, -np.pi/2), # bottom middle
+    # (3.4, 0.3, 0), # bottom right
+    # (3.4, 1.8, np.pi/2) # center right
 ]
 
 EXPLORATION_WAYPOINTS = [Pose2D(*x) for x in EXPLORATION_WAYPOINTS]
@@ -94,7 +94,7 @@ class Supervisor:
         self.rescue_threshold = 5
 
         # Time to stop at a stop sign
-        self.stop_time = 3
+        self.stop_time = 1000
         self.stop_sign_start = None
 
         # Minimum distance from a stop sign to obey it
@@ -117,7 +117,7 @@ class Supervisor:
         rospy.Subscriber('/detector/stop_sign', DetectedObject, self.stop_sign_detected_callback)
 
         # rescue info subscriber
-        rospy.Subscriber('/rescue', DetectedObjectList, self.update_rescue_goals_callback)
+        rospy.Subscriber('/rescue', PoseArray, self.update_rescue_goals_callback)
 
         self.trans_listener = tf.TransformListener()
 
@@ -126,9 +126,8 @@ class Supervisor:
 
     def update_rescue_goals_callback(self, msg):
 
-        start = DetectedObject()
-        start.world_pose = Pose(Point(0, 0, 0), quaternion_from_euler(0, 0, 0))
-        self.rescue_goals = [m.world_pose for m in msg.ob_msgs].extend([start])
+        self.rescue_goals = [p for p in msg.poses] + [Pose(Point(0,0,0),Quaternion()),]
+
         self.switch_mode(Mode.RESCUE)
         self.set_goal_pose[self.rescue_index]
 
@@ -226,6 +225,9 @@ class Supervisor:
 
         if new_mode == Mode.RESCUE:
             nav_params.localizer = "map"
+
+        if new_mode == Mode.LISTEN:
+            self.msg_publisher.publish("stopsign")
 
         self.mode = new_mode
 

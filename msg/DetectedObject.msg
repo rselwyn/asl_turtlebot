@@ -5,4 +5,3 @@ float64 distance
 float64 thetaleft
 float64 thetaright
 float64[] corners
-Pose world_pose
