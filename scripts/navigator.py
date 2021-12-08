@@ -17,6 +17,7 @@ from enum import Enum
 
 from dynamic_reconfigure.server import Server
 from asl_turtlebot.cfg import NavigatorConfig
+from nav_params import nav_params, POS_EPS, THETA_EPS
 
 # state machine modes, not all implemented
 class Mode(Enum):
@@ -128,7 +129,7 @@ class Navigator:
     def supervisor_callback(self, string):
 
         if string == "disable navigator":
-            self.mode = Mode.DISABLED
+            self.switch_mode(Mode.DISABLED)
         elif string == "enable navigator":
             self.replan()
 
@@ -247,26 +248,26 @@ class Navigator:
     def publish_planned_path(self, path, publisher):
         # publish planned plan for visualization
         path_msg = Path()
-        path_msg.header.frame_id = "map"
+        path_msg.header.frame_id = nav_params.localizer
         for state in path:
             pose_st = PoseStamped()
             pose_st.pose.position.x = state[0]
             pose_st.pose.position.y = state[1]
             pose_st.pose.orientation.w = 1
-            pose_st.header.frame_id = "map"
+            pose_st.header.frame_id = path_msg.header.frame_id
             path_msg.poses.append(pose_st)
         publisher.publish(path_msg)
 
     def publish_smoothed_path(self, traj, publisher):
         # publish planned plan for visualization
         path_msg = Path()
-        path_msg.header.frame_id = "map"
+        path_msg.header.frame_id = nav_params.localizer
         for i in range(traj.shape[0]):
             pose_st = PoseStamped()
             pose_st.pose.position.x = traj[i, 0]
             pose_st.pose.position.y = traj[i, 1]
             pose_st.pose.orientation.w = 1
-            pose_st.header.frame_id = "map"
+            pose_st.header.frame_id = path_msg.header.frame_id
             path_msg.poses.append(pose_st)
         publisher.publish(path_msg)
 
@@ -419,7 +420,7 @@ class Navigator:
             # try to get state information to update self.x, self.y, self.theta
             try:
                 (translation, rotation) = self.trans_listener.lookupTransform(
-                    "/map", "/base_footprint", rospy.Time(0)
+                    nav_params.localizer, "/base_footprint", rospy.Time(0)
                 )
                 self.x = translation[0]
                 self.y = translation[1]
